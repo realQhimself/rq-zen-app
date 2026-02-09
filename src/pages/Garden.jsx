@@ -99,7 +99,69 @@ const MONK_SPEED = 0.4;
 const INTERACTION_RADIUS = 12;
 const BOUNDS = { minX: 5, maxX: 95, minY: 10, maxY: 85 };
 
-// --- Virtual Joystick Component (FIXED: high-visibility) ---
+// --- Device Detection Hook ---
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints >= 1 && window.innerWidth < 1024);
+  });
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && window.innerWidth < 1024)
+      );
+    };
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+};
+
+// --- Keyboard Controls Hook (Desktop) ---
+const useKeyboardControls = (joystickRef, enabled) => {
+  const keysRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!enabled) return;
+    const onDown = (e) => {
+      const key = e.key.toLowerCase();
+      if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {
+        e.preventDefault();
+        keysRef.current.add(key);
+        updateJoystick();
+      }
+    };
+    const onUp = (e) => {
+      const key = e.key.toLowerCase();
+      keysRef.current.delete(key);
+      updateJoystick();
+    };
+    const updateJoystick = () => {
+      const keys = keysRef.current;
+      let dx = 0, dy = 0;
+      if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
+      if (keys.has('d') || keys.has('arrowright')) dx += 1;
+      if (keys.has('w') || keys.has('arrowup')) dy -= 1;
+      if (keys.has('s') || keys.has('arrowdown')) dy += 1;
+      // Normalize diagonal
+      if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+      joystickRef.current = { dx, dy };
+    };
+    const onBlur = () => { keysRef.current.clear(); joystickRef.current = { dx: 0, dy: 0 }; };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [enabled, joystickRef]);
+};
+
+// --- Virtual Joystick Component (Mobile only, iPhone safe-area aware) ---
 const VirtualJoystick = ({ joystickRef }) => {
   const stickRef = useRef(null);
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
@@ -146,28 +208,28 @@ const VirtualJoystick = ({ joystickRef }) => {
     <div
       ref={stickRef}
       data-joystick="true"
-      className="absolute bottom-20 left-4 z-30 touch-none"
-      style={{ width: OUTER_R * 2, height: OUTER_R * 2 }}
+      className="absolute left-4 z-30 touch-none"
+      style={{
+        width: OUTER_R * 2,
+        height: OUTER_R * 2,
+        bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px) + 8px)',
+      }}
       onTouchStart={handleStart}
       onTouchMove={handleMove}
       onTouchEnd={handleEnd}
-      onMouseDown={handleStart}
-      onMouseMove={active ? handleMove : undefined}
-      onMouseUp={active ? handleEnd : undefined}
-      onMouseLeave={active ? handleEnd : undefined}
     >
-      {/* Outer ring — clearly visible */}
+      {/* Outer ring */}
       <div
         className="absolute inset-0 rounded-full border-2"
         style={{
           borderColor: active ? 'rgba(44,44,44,0.5)' : 'rgba(44,44,44,0.25)',
-          background: active ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.3)',
+          background: active ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.4)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
         }}
       />
-      {/* Inner knob — solid and visible */}
+      {/* Inner knob */}
       <div
         className="absolute rounded-full"
         style={{
@@ -175,11 +237,23 @@ const VirtualJoystick = ({ joystickRef }) => {
           height: KNOB_R * 2,
           left: OUTER_R - KNOB_R + knobPos.x,
           top: OUTER_R - KNOB_R + knobPos.y,
-          background: active ? 'rgba(44,44,44,0.55)' : 'rgba(44,44,44,0.3)',
-          boxShadow: active ? '0 2px 8px rgba(0,0,0,0.2)' : '0 1px 4px rgba(0,0,0,0.1)',
+          background: active ? 'rgba(44,44,44,0.6)' : 'rgba(44,44,44,0.35)',
+          boxShadow: active ? '0 2px 8px rgba(0,0,0,0.25)' : '0 1px 4px rgba(0,0,0,0.12)',
           transition: active ? 'none' : 'all 0.15s ease',
         }}
       />
+      {/* Direction arrows hint */}
+      {!active && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 4L14 24M4 14L24 14" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M14 4L10 8M14 4L18 8" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M14 24L10 20M14 24L18 20" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M4 14L8 10M4 14L8 18" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M24 14L20 10M24 14L20 18" stroke="#2c2c2c" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+      )}
     </div>
   );
 };
@@ -222,6 +296,7 @@ const DeleteModal = ({ itemName, onConfirm, onCancel }) => (
 // --- Garden Page ---
 export default function Garden() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { garden, balance, cycleDay, hasCheckedInToday, checkIn, placeItem, removeItem } = useGardenState();
   const [floatingPoints, setFloatingPoints] = useState([]);
   const gardenRef = useRef(null);
@@ -238,6 +313,9 @@ export default function Garden() {
   const joystickRef = useRef({ dx: 0, dy: 0 });
   const monkPosRef = useRef(monkPos);
   const animFrameRef = useRef(null);
+
+  // Keyboard controls for desktop
+  useKeyboardControls(joystickRef, !isMobile);
 
   // Interaction state
   const [activeInteractions, setActiveInteractions] = useState(new Set());
@@ -642,11 +720,31 @@ export default function Garden() {
         </div>
       </div>
 
-      {/* Virtual Joystick — z-30 to stay above nav z-50? No, keep below nav but visible */}
-      <VirtualJoystick joystickRef={joystickRef} />
+      {/* Controls: joystick for mobile, keyboard hint for desktop */}
+      {isMobile ? (
+        <VirtualJoystick joystickRef={joystickRef} />
+      ) : (
+        <div
+          className="absolute left-4 z-30 flex items-center gap-2 bg-white/50 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/40"
+          style={{ bottom: 'calc(5rem + 8px)' }}
+        >
+          <div className="flex flex-col items-center gap-0.5">
+            <kbd className="w-6 h-6 bg-white/70 border border-zen-stone/20 rounded text-[10px] font-mono flex items-center justify-center text-zen-ink shadow-sm">W</kbd>
+            <div className="flex gap-0.5">
+              <kbd className="w-6 h-6 bg-white/70 border border-zen-stone/20 rounded text-[10px] font-mono flex items-center justify-center text-zen-ink shadow-sm">A</kbd>
+              <kbd className="w-6 h-6 bg-white/70 border border-zen-stone/20 rounded text-[10px] font-mono flex items-center justify-center text-zen-ink shadow-sm">S</kbd>
+              <kbd className="w-6 h-6 bg-white/70 border border-zen-stone/20 rounded text-[10px] font-mono flex items-center justify-center text-zen-ink shadow-sm">D</kbd>
+            </div>
+          </div>
+          <span className="text-[10px] text-zen-stone font-serif">移动</span>
+        </div>
+      )}
 
       {/* Bottom-right buttons */}
-      <div className="absolute bottom-20 right-4 z-30 flex flex-col gap-3 items-center">
+      <div
+        className="absolute right-4 z-30 flex flex-col gap-3 items-center"
+        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px) + 8px)' }}
+      >
         {/* Place Item button */}
         <motion.button
           whileTap={{ scale: 0.9 }}
