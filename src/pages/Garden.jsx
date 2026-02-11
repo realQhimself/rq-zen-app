@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Volume2, VolumeX } from 'lucide-react';
 
 // --- Garden Items (Pixel Art) ---
 const BASE = import.meta.env.BASE_URL;
@@ -12,6 +12,93 @@ const GARDEN_ITEMS = [
   { id: 'pond',     name: '锦鲤池', cost: 20, image: `${BASE}images/garden/item-pond.png`,     interaction: 'ripple', link: '/fish', linkPrompt: '池边敲鱼' },
   { id: 'incense',  name: '香炉',   cost: 15, image: `${BASE}images/garden/item-incense.png`,  interaction: 'smoke',  link: '/sutra', linkPrompt: '焚香抄经' },
 ];
+
+// --- Fixed NPCs (permanent garden fixtures) ---
+const GARDEN_NPCS = [
+  { id: 'buddha', name: '佛像', x: 50, y: 22 },
+  { id: 'muyu',   name: '木鱼', x: 75, y: 40 },
+];
+const NPC_INTERACTION_RADIUS = 15;
+
+// --- Buddha Statue SVG ---
+const BuddhaStatueSVG = ({ glowing }) => (
+  <svg viewBox="0 0 80 100" className="select-none" style={{
+    width: 80, height: 100,
+    filter: glowing ? 'drop-shadow(0 0 16px rgba(196,168,98,0.7))' : 'none',
+    transition: 'filter 0.6s ease',
+  }}>
+    {glowing && (
+      <circle cx="40" cy="28" r="28" fill="none" stroke="rgba(196,168,98,0.2)" strokeWidth="1" className="npc-halo" />
+    )}
+    {/* Ushnisha */}
+    <ellipse cx="40" cy="11" rx="5" ry="6" fill="#d4b96a" />
+    {/* Head */}
+    <ellipse cx="40" cy="22" rx="12" ry="14" fill="#c4a862" />
+    {/* Ears */}
+    <ellipse cx="27" cy="24" rx="3" ry="6" fill="#b89d58" />
+    <ellipse cx="53" cy="24" rx="3" ry="6" fill="#b89d58" />
+    {/* Closed eyes */}
+    <path d="M34 21 Q36 23 38 21" fill="none" stroke="#7a6a3a" strokeWidth="1" strokeLinecap="round" />
+    <path d="M42 21 Q44 23 46 21" fill="none" stroke="#7a6a3a" strokeWidth="1" strokeLinecap="round" />
+    {/* Serene smile */}
+    <path d="M37 27 Q40 29 43 27" fill="none" stroke="#7a6a3a" strokeWidth="0.8" strokeLinecap="round" />
+    {/* Neck */}
+    <rect x="36" y="34" width="8" height="4" fill="#b39755" rx="2" />
+    {/* Body / robe */}
+    <path d="M20 44 Q28 37 40 36 Q52 37 60 44 L62 72 Q40 77 18 72 Z" fill="#b39755" />
+    {/* Robe folds */}
+    <path d="M28 46 Q36 54 38 64" fill="none" stroke="#a08845" strokeWidth="0.7" opacity="0.6" />
+    <path d="M52 46 Q44 54 42 64" fill="none" stroke="#a08845" strokeWidth="0.7" opacity="0.6" />
+    <path d="M24 55 Q40 60 56 55" fill="none" stroke="#a08845" strokeWidth="0.6" opacity="0.4" />
+    {/* Hands in dhyana mudra */}
+    <ellipse cx="40" cy="60" rx="12" ry="5" fill="#c4a862" opacity="0.9" />
+    {/* Crossed legs */}
+    <ellipse cx="40" cy="72" rx="24" ry="6" fill="#a08845" />
+    {/* Lotus base */}
+    <path d="M10 86 Q18 78 26 80 Q33 75 40 80 Q47 75 54 80 Q62 78 70 86 Q62 90 54 88 Q47 92 40 88 Q33 92 26 88 Q18 90 10 86Z" fill="#dcc88a" />
+    <path d="M14 86 Q22 82 30 83 Q35 79 40 83 Q45 79 50 83 Q58 82 66 86" fill="none" stroke="#c4b078" strokeWidth="0.5" />
+  </svg>
+);
+
+// --- Muyu Drum SVG ---
+const MuyuDrumSVG = ({ hitting }) => (
+  <svg viewBox="0 0 80 80" className="select-none" style={{
+    width: 72, height: 72,
+    transform: hitting ? 'scale(0.9)' : 'scale(1)',
+    transition: 'transform 0.08s ease',
+  }}>
+    {/* Stand */}
+    <path d="M28 65 L52 65" stroke="#4A2810" strokeWidth="3" strokeLinecap="round" />
+    <rect x="36" y="52" width="3.5" height="14" fill="#5D3318" rx="1" />
+    <rect x="40.5" y="52" width="3.5" height="14" fill="#5D3318" rx="1" />
+    {/* Shadow */}
+    <ellipse cx="40" cy="68" rx="18" ry="3" fill="rgba(0,0,0,0.08)" />
+    {/* Drum body */}
+    <ellipse cx="40" cy="34" rx="30" ry="24" fill="#8B4513" />
+    <ellipse cx="40" cy="34" rx="27" ry="21" fill="#A0522D" />
+    <ellipse cx="40" cy="34" rx="24" ry="18" fill="#B5633A" />
+    {/* Scale pattern */}
+    <path d="M22 28 Q30 34 22 38" fill="none" stroke="#8B4513" strokeWidth="0.8" opacity="0.4" />
+    <path d="M28 24 Q36 30 28 34" fill="none" stroke="#8B4513" strokeWidth="0.8" opacity="0.4" />
+    <path d="M52 24 Q44 30 52 34" fill="none" stroke="#8B4513" strokeWidth="0.8" opacity="0.4" />
+    <path d="M58 28 Q50 34 58 38" fill="none" stroke="#8B4513" strokeWidth="0.8" opacity="0.4" />
+    {/* Fish mouth */}
+    <ellipse cx="40" cy="42" rx="7" ry="3.5" fill="#3D1F0A" />
+    {/* Fish eyes */}
+    <circle cx="30" cy="30" r="3" fill="#3D1F0A" />
+    <circle cx="50" cy="30" r="3" fill="#3D1F0A" />
+    <circle cx="30.5" cy="29.5" r="1.2" fill="#5D3318" />
+    <circle cx="50.5" cy="29.5" r="1.2" fill="#5D3318" />
+    {/* Highlight */}
+    <ellipse cx="35" cy="26" rx="10" ry="5" fill="rgba(255,255,255,0.08)" />
+    {/* Striker */}
+    <line x1="64" y1="16" x2="52" y2="28" stroke="#5D3318" strokeWidth="3.5" strokeLinecap="round" />
+    <circle cx="66" cy="14" r="5" fill="#8B4513" />
+    <circle cx="66" cy="14" r="3.5" fill="#A0522D" />
+    {/* Hit flash */}
+    {hitting && <ellipse cx="48" cy="30" rx="8" ry="6" fill="rgba(255,255,200,0.4)" />}
+  </svg>
+);
 
 // --- XP Helpers (reads unified profile) ---
 const readProfile = () => {
@@ -327,6 +414,61 @@ export default function Garden() {
   const longPressTouchStart = useRef(null);
   const [longPressProgress, setLongPressProgress] = useState(null);
 
+  // --- NPC State ---
+  const [npcProximity, setNpcProximity] = useState(new Set());
+
+  // Muyu sound
+  const muyuPoolRef = useRef([]);
+  const muyuPoolIdx = useRef(0);
+  const [muyuHitting, setMuyuHitting] = useState(false);
+
+  // Background music
+  const audioRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('zen_garden_muted') ?? 'false'); }
+    catch { return false; }
+  });
+
+  useEffect(() => {
+    const audio = new Audio(`${BASE}audio/garden.mp3`);
+    audio.loop = true;
+    audio.volume = 0.4;
+    audioRef.current = audio;
+
+    if (!isMuted) {
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isMuted) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+    localStorage.setItem('zen_garden_muted', JSON.stringify(isMuted));
+  }, [isMuted]);
+
+  // Muyu audio pool (3 elements for rapid tapping)
+  useEffect(() => {
+    const pool = [];
+    for (let i = 0; i < 3; i++) {
+      const audio = new Audio(`${BASE}audio/muyu-sample2.mp3`);
+      audio.volume = 0.7;
+      pool.push(audio);
+    }
+    muyuPoolRef.current = pool;
+    return () => pool.forEach(a => { a.pause(); a.src = ''; });
+  }, []);
+
   // Item placement state
   const [showPicker, setShowPicker] = useState(false);
   const [placingItem, setPlacingItem] = useState(null);
@@ -366,6 +508,24 @@ export default function Garden() {
     setActiveInteractions(prev => {
       if (prev.size !== newInteractions.size || [...prev].some(id => !newInteractions.has(id))) {
         return newInteractions;
+      }
+      return prev;
+    });
+
+    // NPC proximity detection
+    const newNpcProximity = new Set();
+    for (const npc of GARDEN_NPCS) {
+      const dist = Math.sqrt(
+        Math.pow(monkPosRef.current.x - npc.x, 2) +
+        Math.pow(monkPosRef.current.y - npc.y, 2)
+      );
+      if (dist < NPC_INTERACTION_RADIUS) {
+        newNpcProximity.add(npc.id);
+      }
+    }
+    setNpcProximity(prev => {
+      if (prev.size !== newNpcProximity.size || [...prev].some(id => !newNpcProximity.has(id))) {
+        return newNpcProximity;
       }
       return prev;
     });
@@ -485,6 +645,28 @@ export default function Garden() {
     navigate(link);
   };
 
+  // --- Muyu Tap → Navigate to Fish/木鱼 page ---
+  const handleMuyuTap = () => {
+    if (!isMuted) {
+      const pool = muyuPoolRef.current;
+      if (pool.length > 0) {
+        const audio = pool[muyuPoolIdx.current % pool.length];
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        muyuPoolIdx.current++;
+      }
+    }
+    if (navigator.vibrate) navigator.vibrate(30);
+    setMuyuHitting(true);
+    setTimeout(() => navigate('/fish'), 200);
+  };
+
+  // --- Buddha Tap → Navigate to Meditation/禅修 page ---
+  const handleBuddhaTap = () => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    navigate('/meditation');
+  };
+
   // --- Get interaction CSS class for an item ---
   const getInteractionClass = (item) => {
     if (!activeInteractions.has(item.id)) return '';
@@ -525,9 +707,18 @@ export default function Garden() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
-          <span className="text-zen-red text-xs">●</span>
-          <span className="text-sm font-mono font-bold text-zen-ink">{balance}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsMuted(m => !m)}
+            className="w-8 h-8 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-full border border-white/40 text-zen-ink active:bg-white/70 transition"
+            aria-label={isMuted ? '取消静音' : '静音'}
+          >
+            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          </button>
+          <div className="flex items-center gap-1.5 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            <span className="text-zen-red text-xs">●</span>
+            <span className="text-sm font-mono font-bold text-zen-ink">{balance}</span>
+          </div>
         </div>
       </div>
 
@@ -678,6 +869,85 @@ export default function Garden() {
             </div>
           );
         })}
+
+        {/* === Fixed NPCs === */}
+
+        {/* Buddha Statue */}
+        <div
+          className="absolute"
+          style={{
+            left: '50%',
+            top: '22%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 6,
+          }}
+        >
+          <BuddhaStatueSVG glowing={npcProximity.has('buddha')} />
+
+          {/* Navigate to meditation */}
+          <AnimatePresence>
+            {npcProximity.has('buddha') && (
+              <motion.button
+                initial={{ opacity: 0, y: 8, scale: 0.8 }}
+                animate={{ opacity: 1, y: -6, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.8 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                onClick={(e) => { e.stopPropagation(); handleBuddhaTap(); }}
+                className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-full font-serif text-xs font-bold text-white shadow-lg active:scale-95 transition-transform"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(196,168,98,0.9), rgba(138,59,59,0.9))',
+                  boxShadow: '0 3px 12px rgba(196,168,98,0.3)',
+                }}
+              >
+                参拜禅修
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Big Muyu Drum */}
+        <div
+          className="absolute"
+          data-garden-item="true"
+          style={{
+            left: '75%',
+            top: '40%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 6,
+          }}
+        >
+          <div
+            onClick={(e) => {
+              if (npcProximity.has('muyu')) {
+                e.stopPropagation();
+                handleMuyuTap();
+              }
+            }}
+            style={{ cursor: npcProximity.has('muyu') ? 'pointer' : 'default' }}
+          >
+            <MuyuDrumSVG hitting={muyuHitting} />
+          </div>
+
+          {/* Navigate to fish/muyu page */}
+          <AnimatePresence>
+            {npcProximity.has('muyu') && (
+              <motion.button
+                initial={{ opacity: 0, y: 8, scale: 0.8 }}
+                animate={{ opacity: 1, y: -6, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.8 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                onClick={(e) => { e.stopPropagation(); handleMuyuTap(); }}
+                className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-full font-serif text-xs font-bold text-white shadow-lg active:scale-95 transition-transform"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139,69,19,0.9), rgba(160,82,45,0.9))',
+                  boxShadow: '0 3px 12px rgba(139,69,19,0.3)',
+                }}
+              >
+                敲木鱼
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Ghost preview during placement */}
         {placingItem && ghostPos && (

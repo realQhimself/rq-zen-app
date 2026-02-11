@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Settings, X } from 'lucide-react';
+import { Play, Pause, Settings, X, Volume2, VolumeX } from 'lucide-react';
 
 // --- XP Helper ---
 const awardXP = (amount) => {
@@ -30,6 +30,100 @@ export default function Meditation() {
     exhale: 8,
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [muted, setMuted] = useState(false);
+
+  // BGM refs
+  const audioRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const fadeIntervalRef = useRef(null);
+
+  // --- BGM helpers ---
+  const getAudioContext = useCallback(() => {
+    if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtxRef.current = new AudioCtx();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const getAudio = useCallback(() => {
+    if (!audioRef.current) {
+      const ctx = getAudioContext();
+      const audio = new Audio(`${import.meta.env.BASE_URL}audio/bowl-horizon.mp3`);
+      audio.loop = true;
+      const source = ctx.createMediaElementSource(audio);
+      const gain = ctx.createGain();
+      gain.gain.value = 0; // start silent for fade-in
+      source.connect(gain).connect(ctx.destination);
+      audioRef.current = audio;
+      gainNodeRef.current = gain;
+    }
+    return { audio: audioRef.current, gain: gainNodeRef.current };
+  }, [getAudioContext]);
+
+  const fadeTo = useCallback((targetVol, durationMs = 1500) => {
+    clearInterval(fadeIntervalRef.current);
+    const { gain } = getAudio();
+    const steps = 30;
+    const stepTime = durationMs / steps;
+    const delta = (targetVol - gain.gain.value) / steps;
+    let step = 0;
+    fadeIntervalRef.current = setInterval(() => {
+      step++;
+      gain.gain.value = Math.min(1, Math.max(0, gain.gain.value + delta));
+      if (step >= steps) {
+        clearInterval(fadeIntervalRef.current);
+        gain.gain.value = targetVol;
+      }
+    }, stepTime);
+  }, [getAudio]);
+
+  // BGM play/pause tied to meditation status
+  useEffect(() => {
+    if (status === 'running') {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') ctx.resume();
+      const { audio, gain } = getAudio();
+      gain.gain.value = 0;
+      audio.play().catch(() => {});
+      fadeTo(muted ? 0 : 1, 1500);
+    } else {
+      if (audioRef.current) {
+        fadeTo(0, 1000);
+        // Pause audio after fade completes
+        const pauseTimer = setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+        }, 1050);
+        return () => clearTimeout(pauseTimer);
+      }
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mute / unmute while running
+  useEffect(() => {
+    if (status === 'running' && gainNodeRef.current) {
+      fadeTo(muted ? 0 : 1, 400);
+    }
+  }, [muted]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cleanup on unmount (navigate away)
+  useEffect(() => {
+    return () => {
+      clearInterval(fadeIntervalRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
 
   // Animation variants
   const variants = {
@@ -208,6 +302,13 @@ export default function Meditation() {
                 className={`p-6 rounded-full transition ${status === 'running' ? 'bg-gray-700 hover:bg-gray-600 shadow-lg' : 'bg-white text-zen-dark hover:bg-gray-100 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
             >
                 {status === 'running' ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+            </button>
+
+            <button
+                onClick={() => setMuted(m => !m)}
+                className="p-4 rounded-full bg-white/5 hover:bg-white/10 transition border border-white/10"
+            >
+                {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
             </button>
         </div>
 

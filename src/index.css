@@ -154,6 +154,17 @@ body {
   100% { transform: translate(-50%, -40px) scale(2); opacity: 0; }
 }
 
+/* --- NPC Animations --- */
+
+/* Buddha halo pulse */
+.npc-halo {
+  animation: haloPulse 3s ease-in-out infinite;
+}
+@keyframes haloPulse {
+  0%, 100% { opacity: 0.2; r: 28; }
+  50% { opacity: 0.5; r: 32; }
+}
+
 /* Ghost preview opacity for item placement mode */
 .placement-ghost {
   opacity: 0.5;
