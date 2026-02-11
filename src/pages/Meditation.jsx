@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Settings, X, Volume2, VolumeX } from 'lucide-react';
+import { MOODS, getGuidedLines } from '../data/guidedScripts';
 
 // --- XP Helper ---
 const awardXP = (amount) => {
@@ -31,6 +32,26 @@ export default function Meditation() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [muted, setMuted] = useState(false);
+
+  // --- Guided Meditation State ---
+  const [mode, setMode] = useState(() => localStorage.getItem('zen_meditation_mode') || 'free');
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [guidedLines, setGuidedLines] = useState([]);
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const cycleCountRef = useRef(0);
+
+  useEffect(() => {
+    localStorage.setItem('zen_meditation_mode', mode);
+  }, [mode]);
+
+  // Load guided lines when mood is selected (preload, no async in toggleStatus)
+  useEffect(() => {
+    if (selectedMood) {
+      getGuidedLines(selectedMood).then(setGuidedLines);
+    } else {
+      setGuidedLines([]);
+    }
+  }, [selectedMood]);
 
   // BGM refs
   const audioRef = useRef(null);
@@ -184,6 +205,13 @@ export default function Meditation() {
               setPhase(PHASES.INHALE); // Loop back
               setTimeLeft(config.inhale);
               vibrate(50); // Short blip for Inhale
+              // Advance guided text on each breath cycle
+              if (mode === 'guided' && guidedLines.length > 0) {
+                cycleCountRef.current += 1;
+                if (cycleCountRef.current < guidedLines.length) {
+                  setCurrentLineIndex(cycleCountRef.current);
+                }
+              }
               break;
           }
         }
@@ -212,7 +240,11 @@ export default function Meditation() {
         startTimeRef.current = null;
       }
       setStatus('idle');
+      setCurrentLineIndex(0);
+      cycleCountRef.current = 0;
     } else {
+      setCurrentLineIndex(0);
+      cycleCountRef.current = 0;
       startTimeRef.current = Date.now();
       setStatus('running');
     }
@@ -284,9 +316,98 @@ export default function Meditation() {
             {phaseText[phase]}
         </div>
 
-        <p className="text-gray-500 text-sm mb-12">
-           {phase === PHASES.HOLD ? "保持静止，感受当下" : "跟随呼吸的节奏"}
-        </p>
+        {/* Mode Toggle (idle only) */}
+        {status === 'idle' && (
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 mb-4">
+            {[
+              { key: 'free', label: '自由呼吸' },
+              { key: 'guided', label: '引导冥想' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => { setMode(t.key); if (t.key === 'free') setSelectedMood(null); }}
+                className={`px-4 py-2 text-xs font-serif rounded-md transition ${
+                  mode === t.key ? 'bg-white/15 text-white font-bold' : 'text-gray-500'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Mood Selection (idle + guided mode) */}
+        <AnimatePresence mode="wait">
+          {status === 'idle' && mode === 'guided' ? (
+            <motion.div
+              key="mood-select"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col items-center gap-3 mb-8"
+            >
+              <div className="flex flex-wrap justify-center gap-2 px-4">
+                {MOODS.map(mood => (
+                  <button
+                    key={mood.id}
+                    onClick={() => setSelectedMood(mood.id)}
+                    className={`px-3 py-2 rounded-xl text-sm font-serif transition border ${
+                      selectedMood === mood.id
+                        ? 'bg-white/15 border-white/30 text-white'
+                        : 'bg-white/5 border-white/10 text-gray-400'
+                    }`}
+                  >
+                    <span className="mr-1">{mood.emoji}</span>
+                    {mood.label}
+                  </button>
+                ))}
+              </div>
+              {selectedMood && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-gray-400 text-sm font-serif"
+                >
+                  {MOODS.find(m => m.id === selectedMood)?.desc}
+                </motion.p>
+              )}
+            </motion.div>
+          ) : status === 'idle' ? (
+            <motion.p
+              key="free-subtitle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-gray-500 text-sm mb-8"
+            >
+              跟随呼吸的节奏
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+
+        {/* Guided Text (running + guided mode) */}
+        {status === 'running' && (
+          <div className="h-12 flex items-center justify-center mb-8">
+            {mode === 'guided' && guidedLines.length > 0 ? (
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={currentLineIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 1.2, ease: 'easeInOut' }}
+                  className="text-gray-300 text-sm font-serif text-center px-8 leading-relaxed"
+                >
+                  {guidedLines[currentLineIndex]}
+                </motion.p>
+              </AnimatePresence>
+            ) : (
+              <p className="text-gray-500 text-sm">
+                {phase === PHASES.HOLD ? '保持静止，感受当下' : '跟随呼吸的节奏'}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Controls */}
         <div className="flex gap-8 items-center">
@@ -299,7 +420,14 @@ export default function Meditation() {
 
             <button
                 onClick={toggleStatus}
-                className={`p-6 rounded-full transition ${status === 'running' ? 'bg-gray-700 hover:bg-gray-600 shadow-lg' : 'bg-white text-zen-dark hover:bg-gray-100 shadow-[0_0_30px_rgba(255,255,255,0.2)]'}`}
+                disabled={status === 'idle' && mode === 'guided' && !selectedMood}
+                className={`p-6 rounded-full transition ${
+                  status === 'running'
+                    ? 'bg-gray-700 hover:bg-gray-600 shadow-lg'
+                    : (mode === 'guided' && !selectedMood)
+                      ? 'bg-white/30 text-zen-dark/50 cursor-not-allowed'
+                      : 'bg-white text-zen-dark hover:bg-gray-100 shadow-[0_0_30px_rgba(255,255,255,0.2)]'
+                }`}
             >
                 {status === 'running' ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
             </button>
