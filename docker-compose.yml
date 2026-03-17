@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  zen-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zen-app
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Volume2, VolumeX } from 'lucide-react';
+import useWeather from '../hooks/useWeather';
+import { SkyOverlay, Stars, CloudOverlay, RainEffect, SnowEffect, FogEffect, SeasonalEffect, WeatherIndicator } from '../components/WeatherEffects';
 
 // --- Garden Items (Pixel Art) ---
 const BASE = import.meta.env.BASE_URL;
@@ -385,6 +387,7 @@ export default function Garden() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { garden, balance, cycleDay, hasCheckedInToday, checkIn, placeItem, removeItem } = useGardenState();
+  const weather = useWeather();
   const [floatingPoints, setFloatingPoints] = useState([]);
   const gardenRef = useRef(null);
 
@@ -695,7 +698,7 @@ export default function Garden() {
       className="h-full flex flex-col relative overflow-hidden select-none touch-manipulation"
     >
       {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 z-20">
+      <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 z-20 garden-hud">
         <div className="flex flex-col">
           <span className="text-xs text-zen-stone font-serif bg-white/40 backdrop-blur-sm px-3 py-1 rounded-full">
             第 {cycleDay} 天 / 30
@@ -708,6 +711,13 @@ export default function Garden() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!weather.loading && (
+            <WeatherIndicator
+              condition={weather.condition}
+              timeOfDay={weather.timeOfDay}
+              temperature={weather.temperature}
+            />
+          )}
           <button
             onClick={() => setIsMuted(m => !m)}
             className="w-8 h-8 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-full border border-white/40 text-zen-ink active:bg-white/70 transition"
@@ -758,6 +768,33 @@ export default function Garden() {
         <div className="absolute inset-2 border border-zen-stone/15 rounded pointer-events-none" />
         <div className="absolute inset-3.5 border border-zen-stone/8 rounded pointer-events-none" />
 
+        {/* Weather overlays */}
+        <SkyOverlay timeOfDay={weather.timeOfDay} />
+        <Stars timeOfDay={weather.timeOfDay} />
+        <CloudOverlay condition={weather.condition} />
+        <RainEffect condition={weather.condition} />
+        <SnowEffect condition={weather.condition} />
+        <FogEffect condition={weather.condition} />
+        <SeasonalEffect season={weather.season} timeOfDay={weather.timeOfDay} condition={weather.condition} />
+
+        {/* Color harmonizer — warms the photo BG to match pixel art palette */}
+        <div
+          className="absolute inset-0 pointer-events-none mix-blend-multiply"
+          style={{ background: 'rgba(232,228,220,0.25)', zIndex: 0 }}
+        />
+
+        {/* Vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 70% 60% at 50% 45%, transparent 50%, rgba(44,44,44,0.12) 100%)',
+            zIndex: 99,
+          }}
+        />
+
+        {/* Paper grain texture */}
+        <div className="garden-grain" />
+
         {/* Ambient Particles */}
         {[...Array(4)].map((_, i) => (
           <div
@@ -796,7 +833,7 @@ export default function Garden() {
                 left: `${item.x}%`,
                 top: `${item.y}%`,
                 transform: 'translate(-50%, -50%)',
-                zIndex: 5,
+                zIndex: Math.floor(item.y),
                 pointerEvents: placingItem ? 'none' : 'auto',
               }}
               onTouchStart={(e) => handleItemTouchStart(e, item)}
@@ -807,6 +844,11 @@ export default function Garden() {
               onMouseUp={handleItemTouchEnd}
               onMouseLeave={handleItemTouchEnd}
             >
+              {/* Ground shadow */}
+              <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-3 rounded-full"
+                style={{ background: 'radial-gradient(ellipse, rgba(0,0,0,0.15), transparent)', filter: 'blur(1px)' }}
+              />
               <img
                 src={def.image}
                 alt={def.name}
@@ -879,10 +921,11 @@ export default function Garden() {
             left: '50%',
             top: '22%',
             transform: 'translate(-50%, -50%)',
-            zIndex: 6,
+            zIndex: 22,
           }}
         >
           <BuddhaStatueSVG glowing={npcProximity.has('buddha')} />
+          {npcProximity.has('buddha') && <div className="npc-proximity-ring" />}
 
           {/* Navigate to meditation */}
           <AnimatePresence>
@@ -913,7 +956,7 @@ export default function Garden() {
             left: '75%',
             top: '40%',
             transform: 'translate(-50%, -50%)',
-            zIndex: 6,
+            zIndex: 40,
           }}
         >
           <div
@@ -927,6 +970,7 @@ export default function Garden() {
           >
             <MuyuDrumSVG hitting={muyuHitting} />
           </div>
+          {npcProximity.has('muyu') && <div className="npc-proximity-ring" />}
 
           {/* Navigate to fish/muyu page */}
           <AnimatePresence>
@@ -976,10 +1020,15 @@ export default function Garden() {
             left: `${monkPos.x}%`,
             top: `${monkPos.y}%`,
             transform: 'translate(-50%, -50%)',
-            zIndex: 10,
+            zIndex: Math.floor(monkPos.y),
             transition: 'left 0.05s linear, top 0.05s linear',
           }}
         >
+          {/* Monk shadow */}
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-full"
+              style={{ background: 'radial-gradient(ellipse, rgba(0,0,0,0.18), transparent)', filter: 'blur(1px)' }}
+            />
           <img
             src={monkSprite}
             alt="monk"

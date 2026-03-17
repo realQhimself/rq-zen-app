@@ -175,3 +175,169 @@ body {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
 }
+
+/* === Weather System Animations === */
+
+/* Rain droplets */
+.weather-rain {
+  background: linear-gradient(180deg, transparent, rgba(150,180,220,0.6));
+  border-radius: 0 0 2px 2px;
+  animation: rainFall var(--rain-duration, 0.6s) linear infinite;
+  animation-delay: var(--rain-delay, 0s);
+}
+@keyframes rainFall {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Snow flakes */
+.weather-snow {
+  background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,255,255,0.3));
+  border-radius: 50%;
+  animation: snowFall var(--snow-duration, 6s) ease-in-out infinite;
+  animation-delay: var(--snow-delay, 0s);
+}
+@keyframes snowFall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  50% { transform: translate(var(--snow-drift, 10px), 50vh) rotate(180deg); opacity: 0.6; }
+  100% { transform: translate(calc(var(--snow-drift, 10px) * -0.5), 100vh) rotate(360deg); opacity: 0; }
+}
+
+/* Fog wisps */
+.weather-fog {
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 50%, rgba(200,200,210,0.25), transparent),
+    radial-gradient(ellipse 60% 50% at 70% 40%, rgba(200,200,210,0.2), transparent),
+    radial-gradient(ellipse 90% 30% at 50% 70%, rgba(200,200,210,0.15), transparent);
+  animation: fogDrift 15s ease-in-out infinite alternate;
+}
+@keyframes fogDrift {
+  0% { opacity: 0.7; transform: translateX(-3%); }
+  100% { opacity: 0.9; transform: translateX(3%); }
+}
+
+/* Cherry blossom petals (spring) */
+.weather-petal {
+  background: radial-gradient(circle, rgba(255,180,190,0.8), rgba(255,150,170,0.4));
+  border-radius: 50% 0 50% 0;
+  animation: petalFall var(--petal-duration, 8s) ease-in-out infinite;
+  animation-delay: var(--petal-delay, 0s);
+}
+@keyframes petalFall {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; }
+  10% { opacity: 0.7; }
+  25% { transform: translate(calc(var(--petal-drift, 20px) * 0.3), 25vh) rotate(90deg) scale(0.9); }
+  50% { transform: translate(var(--petal-drift, 20px), 50vh) rotate(180deg) scale(1.1); opacity: 0.5; }
+  75% { transform: translate(calc(var(--petal-drift, 20px) * 0.7), 75vh) rotate(270deg) scale(0.8); }
+  100% { transform: translate(var(--petal-drift, 20px), 100vh) rotate(360deg) scale(0.6); opacity: 0; }
+}
+
+/* Fireflies (summer night) */
+.weather-firefly {
+  width: 3px;
+  height: 3px;
+  background: rgba(200,220,100,0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px rgba(200,220,100,0.5);
+  animation: fireflyGlow var(--fly-duration, 4s) ease-in-out infinite;
+  animation-delay: var(--fly-delay, 0s);
+}
+@keyframes fireflyGlow {
+  0% { transform: translate(0, 0); opacity: 0; }
+  20% { opacity: 0.9; }
+  50% { transform: translate(var(--fly-dx, 15px), var(--fly-dy, -10px)); opacity: 0.3; }
+  70% { opacity: 0.8; }
+  100% { transform: translate(calc(var(--fly-dx, 15px) * -0.5), calc(var(--fly-dy, -10px) * -0.5)); opacity: 0; }
+}
+
+/* Falling leaves (autumn) */
+.weather-leaf {
+  background: linear-gradient(135deg, rgba(180,120,40,0.8), rgba(160,80,30,0.6));
+  border-radius: 50% 0 50% 0;
+  animation: leafFall var(--leaf-duration, 10s) ease-in-out infinite;
+  animation-delay: var(--leaf-delay, 0s);
+}
+@keyframes leafFall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 0.7; }
+  25% { transform: translate(calc(var(--leaf-drift, 30px) * 0.4), 22vh) rotate(70deg); }
+  50% { transform: translate(var(--leaf-drift, 30px), 48vh) rotate(180deg); opacity: 0.5; }
+  75% { transform: translate(calc(var(--leaf-drift, 30px) * 0.6), 72vh) rotate(250deg); }
+  100% { transform: translate(var(--leaf-drift, 30px), 100vh) rotate(360deg); opacity: 0; }
+}
+
+/* Star twinkle (night) */
+.weather-star {
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  animation: starTwinkle var(--star-duration, 3s) ease-in-out infinite;
+  animation-delay: var(--star-delay, 0s);
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+/* Lightning flash (storm) */
+.weather-lightning {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: lightningFlash 6s ease-in-out infinite;
+}
+@keyframes lightningFlash {
+  0%, 100% { background: transparent; }
+  92% { background: transparent; }
+  93% { background: rgba(255,255,255,0.15); }
+  94% { background: transparent; }
+  96% { background: rgba(255,255,255,0.08); }
+  97% { background: transparent; }
+}
+
+/* === Garden Visual Polish === */
+
+/* Paper grain texture overlay */
+.garden-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  z-index: 98;
+}
+
+/* Soft item hover glow */
+.garden-item-hover:active {
+  filter: brightness(1.1) drop-shadow(0 0 6px rgba(196,168,98,0.3));
+}
+
+/* Improved HUD glass effect */
+.garden-hud {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* NPC ground marker when monk is nearby */
+.npc-proximity-ring {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(196,168,98,0.25), transparent);
+  animation: proximityPulse 2s ease-in-out infinite;
+}
+
+@keyframes proximityPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.5; }
+  50% { transform: translateX(-50%) scale(1.15); opacity: 0.8; }
+}
