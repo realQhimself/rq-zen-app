@@ -12,7 +12,7 @@ const Navigation = () => {
   const NavItem = ({ to, icon: Icon, label }) => {
     const isActive = location.pathname === to;
     return (
-      <Link to={to} className={`flex flex-col items-center p-2 transition-colors ${isActive ? 'text-zen-red' : 'text-gray-400'}`}>
+      <Link to={to} className={`flex flex-col items-center p-2 transition-colors ${isActive ? 'text-zen-red' : 'text-gray-500'}`}>
         <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
         <span className="text-xs mt-1">{label}</span>
       </Link>
