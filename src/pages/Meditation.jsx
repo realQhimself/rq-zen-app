@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Settings, X, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Settings, X, Volume2, VolumeX, Timer, Infinity as InfinityIcon } from 'lucide-react';
 import { MOODS, getGuidedLines } from '../data/guidedScripts';
 import { addXP, safeLoad, safeSave, KEYS } from '../utils/zen';
 
@@ -11,11 +11,14 @@ const PHASES = {
   EXHALE: 'exhale',
 };
 
+// Timer presets in minutes (0 = infinite)
+const TIMER_PRESETS = [0, 5, 10, 15];
+
 export default function Meditation() {
   const [status, setStatus] = useState('idle'); // idle, running
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [timeLeft, setTimeLeft] = useState(0);
-  
+
   // Settings (Seconds)
   const [config, setConfig] = useState({
     inhale: 4,
@@ -24,6 +27,18 @@ export default function Meditation() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [muted, setMuted] = useState(false);
+
+  // --- Timer State ---
+  const [timerMinutes, setTimerMinutes] = useState(() => safeLoad(KEYS.MEDITATION_TIMER, 0));
+  const [showCustomTimer, setShowCustomTimer] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(0); // remaining seconds for timed mode
+  const sessionEndRef = useRef(null); // Date.now() when session should end
+
+  // Save timer preference
+  useEffect(() => {
+    safeSave(KEYS.MEDITATION_TIMER, timerMinutes);
+  }, [timerMinutes]);
 
   // --- Guided Meditation State ---
   const [mode, setMode] = useState(() => safeLoad(KEYS.MEDITATION_MODE, 'free'));
@@ -202,6 +217,25 @@ export default function Meditation() {
     phaseDurationRef.current = duration;
   }, []);
 
+  // --- Stop session helper (used by both manual stop and timer auto-stop) ---
+  const stopSession = useCallback(() => {
+    if (startTimeRef.current) {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      if (elapsed > 5) {
+        const stats = safeLoad(KEYS.MEDITATION, { sessions: 0, totalSeconds: 0 });
+        stats.sessions += 1;
+        stats.totalSeconds += elapsed;
+        safeSave(KEYS.MEDITATION, stats);
+        addXP(Math.max(1, Math.floor(elapsed / 60) * 5));
+      }
+      startTimeRef.current = null;
+    }
+    setStatus('idle');
+    setCurrentLineIndex(0);
+    cycleCountRef.current = 0;
+    sessionEndRef.current = null;
+  }, []);
+
   // Advance to next phase
   const advancePhase = useCallback(() => {
     switch (phase) {
@@ -216,8 +250,8 @@ export default function Meditation() {
       case PHASES.EXHALE:
         startPhase(PHASES.INHALE, config.inhale);
         vibrate(50);
+        cycleCountRef.current += 1;
         if (mode === 'guided' && guidedLines.length > 0) {
-          cycleCountRef.current += 1;
           if (cycleCountRef.current < guidedLines.length) {
             setCurrentLineIndex(cycleCountRef.current);
           }
@@ -242,6 +276,15 @@ export default function Meditation() {
         if (remaining <= 0) {
           advancePhase();
         }
+
+        // Update session timer countdown
+        if (sessionEndRef.current) {
+          const sessRemaining = Math.max(0, Math.ceil((sessionEndRef.current - Date.now()) / 1000));
+          setSessionTimeLeft(sessRemaining);
+          if (sessRemaining <= 0) {
+            stopSession();
+          }
+        }
       };
 
       const timer = setInterval(tick, 250);
@@ -250,30 +293,43 @@ export default function Meditation() {
       setPhase(PHASES.IDLE);
       setTimeLeft(0);
     }
-  }, [status, phase, config, startPhase, advancePhase]);
+  }, [status, phase, config, startPhase, advancePhase, stopSession]);
+
+  // Format seconds to MM:SS
+  const formatTime = (totalSeconds) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
 
   const toggleStatus = () => {
     if (status === 'running') {
-      // Save session stats
-      if (startTimeRef.current) {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        if (elapsed > 5) { // Only count sessions longer than 5 seconds
-          const stats = safeLoad(KEYS.MEDITATION, { sessions: 0, totalSeconds: 0 });
-          stats.sessions += 1;
-          stats.totalSeconds += elapsed;
-          safeSave(KEYS.MEDITATION, stats);
-          addXP(Math.max(1, Math.floor(elapsed / 60) * 5)); // +5 XP per minute, min 1
-        }
-        startTimeRef.current = null;
-      }
-      setStatus('idle');
-      setCurrentLineIndex(0);
-      cycleCountRef.current = 0;
+      stopSession();
     } else {
       setCurrentLineIndex(0);
       cycleCountRef.current = 0;
       startTimeRef.current = Date.now();
+
+      // Set session end time if timed mode
+      if (timerMinutes > 0) {
+        sessionEndRef.current = Date.now() + timerMinutes * 60 * 1000;
+        setSessionTimeLeft(timerMinutes * 60);
+      } else {
+        sessionEndRef.current = null;
+        setSessionTimeLeft(0);
+      }
+
       setStatus('running');
+    }
+  };
+
+  // Handle custom timer input
+  const handleCustomTimerSubmit = () => {
+    const val = parseInt(customInput, 10);
+    if (val > 0 && val <= 120) {
+      setTimerMinutes(val);
+      setShowCustomTimer(false);
+      setCustomInput('');
     }
   };
 
@@ -309,6 +365,25 @@ export default function Meditation() {
           }}
         />
       ))}
+
+      {/* Session Countdown Timer (top of screen, visible when timed and running) */}
+      <AnimatePresence>
+        {status === 'running' && sessionEndRef.current && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-0 left-0 right-0 z-20 flex justify-center pt-4"
+          >
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+              <Timer size={14} className="text-zen-gold" />
+              <span className="text-sm font-mono text-zen-gold tracking-wider">
+                {formatTime(sessionTimeLeft)}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8">
@@ -360,6 +435,71 @@ export default function Meditation() {
                 {t.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Timer Duration Selector (idle only) */}
+        {status === 'idle' && (
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <div className="flex items-center gap-1.5">
+              {TIMER_PRESETS.map(mins => (
+                <button
+                  key={mins}
+                  onClick={() => { setTimerMinutes(mins); setShowCustomTimer(false); }}
+                  className={`px-3 py-1.5 text-xs font-serif rounded-full transition border ${
+                    timerMinutes === mins && !showCustomTimer
+                      ? 'bg-white/15 border-white/30 text-white'
+                      : 'bg-white/5 border-white/10 text-gray-500'
+                  }`}
+                >
+                  {mins === 0 ? (
+                    <span className="flex items-center gap-1">
+                      <InfinityIcon size={12} />
+                      无限
+                    </span>
+                  ) : `${mins}分钟`}
+                </button>
+              ))}
+              <button
+                onClick={() => setShowCustomTimer(v => !v)}
+                className={`px-3 py-1.5 text-xs font-serif rounded-full transition border ${
+                  showCustomTimer || (!TIMER_PRESETS.includes(timerMinutes) && timerMinutes > 0)
+                    ? 'bg-white/15 border-white/30 text-white'
+                    : 'bg-white/5 border-white/10 text-gray-500'
+                }`}
+              >
+                {!TIMER_PRESETS.includes(timerMinutes) && timerMinutes > 0 ? `${timerMinutes}分钟` : '自定义'}
+              </button>
+            </div>
+
+            {/* Custom timer input */}
+            <AnimatePresence>
+              {showCustomTimer && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center gap-2 overflow-hidden"
+                >
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    placeholder="分钟数"
+                    value={customInput}
+                    onChange={e => setCustomInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCustomTimerSubmit(); }}
+                    className="w-20 px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg text-white text-center placeholder-gray-500 focus:outline-none focus:border-white/40"
+                  />
+                  <button
+                    onClick={handleCustomTimerSubmit}
+                    className="px-3 py-1.5 text-xs font-serif bg-white/15 border border-white/20 rounded-lg text-white"
+                  >
+                    确定
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -475,7 +615,7 @@ export default function Meditation() {
       {/* Settings Modal */}
       <AnimatePresence>
         {showSettings && (
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6"
             >
@@ -484,7 +624,7 @@ export default function Meditation() {
                         <h3 className="text-xl font-bold">呼吸节奏</h3>
                         <button onClick={() => setShowSettings(false)} aria-label="关闭设置"><X /></button>
                     </div>
-                    
+
                     {[
                         { key: 'inhale', label: '吸气 (秒)' },
                         { key: 'hold', label: '止息 (秒)' },
@@ -495,7 +635,7 @@ export default function Meditation() {
                                 <span>{label}</span>
                                 <span className="text-white font-mono">{config[key]}s</span>
                             </label>
-                            <input 
+                            <input
                                 type="range" min="1" max="15" step="1"
                                 value={config[key]}
                                 onChange={(e) => setConfig({...config, [key]: parseInt(e.target.value)})}
@@ -503,8 +643,8 @@ export default function Meditation() {
                             />
                         </div>
                     ))}
-                    
-                    <button 
+
+                    <button
                         onClick={() => setShowSettings(false)}
                         className="w-full py-3 bg-white text-zen-dark rounded-xl font-bold mt-2"
                     >
