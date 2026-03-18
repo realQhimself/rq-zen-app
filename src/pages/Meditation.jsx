@@ -440,6 +440,7 @@ export default function Meditation() {
         <div className="flex gap-8 items-center">
             <button
                 onClick={() => setShowSettings(true)}
+                aria-label="呼吸节奏设置"
                 className="p-4 rounded-full bg-white/5 hover:bg-white/10 transition border border-white/10"
             >
                 <Settings size={24} />
@@ -448,6 +449,7 @@ export default function Meditation() {
             <button
                 onClick={toggleStatus}
                 disabled={status === 'idle' && mode === 'guided' && !selectedMood}
+                aria-label={status === 'running' ? '暂停禅修' : '开始禅修'}
                 className={`p-6 rounded-full transition ${
                   status === 'running'
                     ? 'bg-gray-700 hover:bg-gray-600 shadow-lg'
@@ -461,6 +463,7 @@ export default function Meditation() {
 
             <button
                 onClick={() => setMuted(m => !m)}
+                aria-label={muted ? '取消静音' : '静音'}
                 className="p-4 rounded-full bg-white/5 hover:bg-white/10 transition border border-white/10"
             >
                 {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
@@ -479,7 +482,7 @@ export default function Meditation() {
                 <div className="bg-zen-dark border border-gray-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-bold">呼吸节奏</h3>
-                        <button onClick={() => setShowSettings(false)}><X /></button>
+                        <button onClick={() => setShowSettings(false)} aria-label="关闭设置"><X /></button>
                     </div>
                     
                     {[
