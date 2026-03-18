@@ -192,7 +192,7 @@ export default function Garden() {
             <span className="text-xs font-serif text-white font-bold">
               点击花园放置 {GARDEN_ITEMS.find(i => i.id === placingItem)?.name}
             </span>
-            <button onClick={() => { setPlacingItem(null); setGhostPos(null); }} className="p-1 text-white/80 active:text-white">
+            <button onClick={() => { setPlacingItem(null); setGhostPos(null); }} aria-label="取消放置" className="p-1 text-white/80 active:text-white">
               <X size={16} />
             </button>
           </motion.div>
@@ -340,6 +340,7 @@ export default function Garden() {
             if (placingItem) { setPlacingItem(null); setGhostPos(null); }
             else setShowPicker(true);
           }}
+          aria-label={placingItem ? '取消放置' : '打开物品商店'}
           className="w-12 h-12 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-sm text-zen-ink border border-white/50 shadow-md active:bg-white/90 transition"
         >
           <Plus size={22} />
