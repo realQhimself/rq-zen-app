@@ -387,6 +387,7 @@ export default function Home() {
               {h.positive && (
                 <button
                   onClick={() => handleHabitTap(h.id, '+')}
+                  aria-label={`${h.text} +1`}
                   className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center active:bg-green-100 transition"
                 >
                   <Plus size={16} />
@@ -396,13 +397,14 @@ export default function Home() {
               {h.negative && (
                 <button
                   onClick={() => handleHabitTap(h.id, '-')}
+                  aria-label={`${h.text} -1`}
                   className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center active:bg-red-100 transition"
                 >
                   <Minus size={16} />
                 </button>
               )}
               {h.custom && (
-                <button onClick={() => handleDeleteTask('habit', h.id)} className="text-gray-300 active:text-red-400">
+                <button onClick={() => handleDeleteTask('habit', h.id)} aria-label={`删除 ${h.text}`} className="text-gray-300 active:text-red-400">
                   <Trash2 size={14} />
                 </button>
               )}
@@ -415,6 +417,7 @@ export default function Home() {
               <div key={d.id} className="zen-card px-4 py-3 flex items-center gap-3">
                 <button
                   onClick={() => !done && handleDailyToggle(d.id)}
+                  aria-label={done ? `${d.text} 已完成` : `完成 ${d.text}`}
                   className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${
                     done ? 'bg-zen-red border-zen-red text-white' : 'border-gray-300 active:border-zen-red'
                   }`}
@@ -426,7 +429,7 @@ export default function Home() {
                   <span className="text-[10px] text-orange-400 font-mono">{d.streak}天</span>
                 )}
                 {d.custom && (
-                  <button onClick={() => handleDeleteTask('daily', d.id)} className="text-gray-300 active:text-red-400">
+                  <button onClick={() => handleDeleteTask('daily', d.id)} aria-label={`删除 ${d.text}`} className="text-gray-300 active:text-red-400">
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -440,11 +443,12 @@ export default function Home() {
                 <div key={t.id} className="zen-card px-4 py-3 flex items-center gap-3">
                   <button
                     onClick={() => handleTodoToggle(t.id)}
+                    aria-label={`完成 ${t.text}`}
                     className="w-6 h-6 rounded-md border-2 border-gray-300 flex items-center justify-center active:border-zen-red transition"
                   />
                   <span className="flex-1 text-sm text-zen-ink font-serif">{t.text}</span>
                   {t.custom && (
-                    <button onClick={() => handleDeleteTask('todo', t.id)} className="text-gray-300 active:text-red-400">
+                    <button onClick={() => handleDeleteTask('todo', t.id)} aria-label={`删除 ${t.text}`} className="text-gray-300 active:text-red-400">
                       <Trash2 size={14} />
                     </button>
                   )}
