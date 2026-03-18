@@ -221,6 +221,7 @@ export default function Fish() {
       {/* Sound Toggle */}
       <button
         onClick={(e) => { e.stopPropagation(); setSoundEnabled(!soundEnabled); }}
+        aria-label={soundEnabled ? '静音' : '开启声音'}
         className="absolute top-4 right-4 p-3 bg-white/40 backdrop-blur-sm rounded-full text-zen-stone z-20 border border-white/30"
       >
         {soundEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}
@@ -250,6 +251,7 @@ export default function Fish() {
         <div className="h-px w-16 mx-auto mt-3 bg-gradient-to-r from-transparent via-zen-stone/30 to-transparent" />
         <button
           onClick={(e) => { e.stopPropagation(); setCount(0); }}
+          aria-label="重置计数"
           className="mt-2 text-zen-stone/40 hover:text-zen-stone transition"
         >
           <RotateCcw size={14} />
@@ -258,11 +260,11 @@ export default function Fish() {
 
       {/* Instrument Switcher */}
       <div className="absolute top-40 flex items-center gap-4 bg-white/50 backdrop-blur-lg px-5 py-2.5 rounded-full shadow-sm border border-white/40 z-20">
-        <button onClick={() => changeInstrument('prev')} className="p-1 text-zen-stone hover:text-zen-ink transition">
+        <button onClick={() => changeInstrument('prev')} aria-label="上一个乐器" className="p-1 text-zen-stone hover:text-zen-ink transition">
             <ChevronLeft size={20} />
         </button>
         <span className="font-serif font-bold w-12 text-center text-sm">{currentInst.name}</span>
-        <button onClick={() => changeInstrument('next')} className="p-1 text-zen-stone hover:text-zen-ink transition">
+        <button onClick={() => changeInstrument('next')} aria-label="下一个乐器" className="p-1 text-zen-stone hover:text-zen-ink transition">
             <ChevronRight size={20} />
         </button>
       </div>
@@ -270,11 +272,15 @@ export default function Fish() {
       {/* The Instrument (Visual) */}
       <motion.div
         key={currentInst.id}
+        role="button"
+        tabIndex={0}
+        aria-label={`敲${currentInst.name}`}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3 }}
         whileTap={{ scale: 0.95, rotate: -2 }}
         onClick={knock}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); knock(e); } }}
         className="cursor-pointer relative z-0 mt-20"
       >
         {currentInst.render()}
