@@ -15,7 +15,7 @@ const PHASES = {
 const TIMER_PRESETS = [0, 5, 10, 15];
 
 export default function Meditation() {
-  const [status, setStatus] = useState('idle'); // idle, running
+  const [status, setStatus] = useState('idle'); // idle, running, settlement
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -39,6 +39,9 @@ export default function Meditation() {
   useEffect(() => {
     safeSave(KEYS.MEDITATION_TIMER, timerMinutes);
   }, [timerMinutes]);
+
+  // --- Settlement State ---
+  const [settlementData, setSettlementData] = useState(null);
 
   // --- Guided Meditation State ---
   const [mode, setMode] = useState(() => safeLoad(KEYS.MEDITATION_MODE, 'free'));
@@ -221,16 +224,30 @@ export default function Meditation() {
   const stopSession = useCallback(() => {
     if (startTimeRef.current) {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      const cycles = cycleCountRef.current;
+      const xpEarned = elapsed > 5 ? Math.max(1, Math.floor(elapsed / 60) * 5) : 0;
+
       if (elapsed > 5) {
+        // Save meditation stats
         const stats = safeLoad(KEYS.MEDITATION, { sessions: 0, totalSeconds: 0 });
         stats.sessions += 1;
         stats.totalSeconds += elapsed;
         safeSave(KEYS.MEDITATION, stats);
-        addXP(Math.max(1, Math.floor(elapsed / 60) * 5));
+        addXP(xpEarned);
       }
+
+      // Show settlement screen
+      setSettlementData({
+        durationSeconds: elapsed,
+        breathCycles: cycles,
+        xpEarned,
+      });
+      setStatus('settlement');
       startTimeRef.current = null;
+    } else {
+      setStatus('idle');
     }
-    setStatus('idle');
+
     setCurrentLineIndex(0);
     cycleCountRef.current = 0;
     sessionEndRef.current = null;
@@ -289,7 +306,7 @@ export default function Meditation() {
 
       const timer = setInterval(tick, 250);
       return () => clearInterval(timer);
-    } else {
+    } else if (status === 'idle') {
       setPhase(PHASES.IDLE);
       setTimeLeft(0);
     }
@@ -300,6 +317,15 @@ export default function Meditation() {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
+  // Format duration as "X 分 Y 秒"
+  const formatDurationChinese = (totalSeconds) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    if (m > 0 && s > 0) return `${m} 分 ${s} 秒`;
+    if (m > 0) return `${m} 分钟`;
+    return `${s} 秒`;
   };
 
   const toggleStatus = () => {
@@ -321,6 +347,11 @@ export default function Meditation() {
 
       setStatus('running');
     }
+  };
+
+  const dismissSettlement = () => {
+    setSettlementData(null);
+    setStatus('idle');
   };
 
   // Handle custom timer input
@@ -652,6 +683,86 @@ export default function Meditation() {
                     </button>
                 </div>
             </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Settlement Screen Overlay */}
+      <AnimatePresence>
+        {status === 'settlement' && settlementData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-6"
+          >
+            {/* Background blur */}
+            <div className="absolute inset-0 bg-zen-dark/90 backdrop-blur-md" />
+
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
+              className="relative z-10 flex flex-col items-center text-center max-w-xs"
+            >
+              {/* Decorative glow */}
+              <div className="w-20 h-20 mb-6 rounded-full bg-zen-gold/20 flex items-center justify-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.6, type: 'spring', stiffness: 200 }}
+                  className="text-4xl"
+                >
+                  🪷
+                </motion.div>
+              </div>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-2xl font-serif font-bold text-white mb-6"
+              >
+                禅修圆满
+              </motion.h2>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="space-y-3 mb-8 w-full"
+              >
+                <div className="flex justify-between items-center px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                  <span className="text-gray-400 text-sm font-serif">本次禅修</span>
+                  <span className="text-white font-serif font-bold">
+                    {formatDurationChinese(settlementData.durationSeconds)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                  <span className="text-gray-400 text-sm font-serif">呼吸循环</span>
+                  <span className="text-white font-serif font-bold">
+                    {settlementData.breathCycles} 次
+                  </span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                  <span className="text-gray-400 text-sm font-serif">获得功德</span>
+                  <span className="text-zen-gold font-serif font-bold">
+                    +{settlementData.xpEarned} 功德
+                  </span>
+                </div>
+              </motion.div>
+
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0 }}
+                onClick={dismissSettlement}
+                className="px-8 py-3 bg-white text-zen-dark rounded-xl font-serif font-bold text-lg shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:bg-gray-100 transition"
+              >
+                完成
+              </motion.button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
