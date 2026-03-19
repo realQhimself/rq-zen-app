@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Wind, Music, PenTool, Leaf, Plus, Minus, Check, Trash2, X } from 'lucide-react';
+import { Wind, Music, PenTool, Leaf, Plus, Minus, Check, Trash2, X, Clock, BookOpen, Flame, Calendar, Star, Trophy } from 'lucide-react';
 import { RANKS, getRank, getNextRank, safeLoad, safeSave, KEYS } from '../utils/zen';
 
 // --- Default Profile ---
@@ -138,6 +138,70 @@ const AddTaskModal = ({ type, onAdd, onClose }) => {
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
+// --- Stats Panel ---
+const StatsPanel = () => {
+  const meditation = safeLoad(KEYS.MEDITATION, { sessions: 0, totalSeconds: 0 });
+  const sutraIndex = safeLoad(KEYS.SUTRA_INDEX, 0);
+  const profile = safeLoad(KEYS.PROFILE, { totalXP: 0, spentXP: 0 });
+  const garden = safeLoad(KEYS.GARDEN, { checkIns: [] });
+  const rank = getRank(profile.totalXP);
+
+  const totalHours = Math.floor(meditation.totalSeconds / 3600);
+  const totalMinutes = Math.floor((meditation.totalSeconds % 3600) / 60);
+  const checkInDays = Array.isArray(garden.checkIns) ? garden.checkIns.length : 0;
+
+  const stats = [
+    {
+      icon: Clock,
+      value: totalHours > 0 ? `${totalHours}h ${totalMinutes}m` : `${totalMinutes} 分钟`,
+      label: '总修行时间',
+      color: 'text-zen-ink',
+    },
+    {
+      icon: Flame,
+      value: meditation.sessions,
+      label: '禅修次数',
+      color: 'text-zen-red',
+    },
+    {
+      icon: BookOpen,
+      value: `${sutraIndex} / 72`,
+      label: '抄经进度',
+      color: 'text-zen-ink',
+    },
+    {
+      icon: Calendar,
+      value: `${checkInDays} 天`,
+      label: '签到天数',
+      color: 'text-zen-moss',
+    },
+    {
+      icon: Star,
+      value: profile.totalXP,
+      label: '总功德',
+      color: 'text-zen-gold',
+    },
+    {
+      icon: Trophy,
+      value: `${rank.name}`,
+      label: `修行等级 Lv.${rank.level}`,
+      color: 'text-zen-red',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {stats.map(({ icon: Icon, value, label, color }) => (
+        <div key={label} className="zen-card p-4 flex flex-col items-center text-center">
+          <Icon size={18} className={`${color} mb-2 opacity-70`} />
+          <p className={`text-2xl font-mono font-bold ${color}`}>{value}</p>
+          <p className="text-xs text-zen-stone mt-1">{label}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // --- Profile Page ---
 export default function Home() {
   const [profile, setProfile] = useState(getProfile);
@@ -255,6 +319,7 @@ export default function Home() {
     { key: 'daily', label: '日课' },
     { key: 'habit', label: '习惯' },
     { key: 'todo', label: '待办' },
+    { key: 'stats', label: '统计' },
   ];
 
   return (
@@ -429,13 +494,17 @@ export default function Home() {
             </>
           )}
 
+          {activeTab === 'stats' && <StatsPanel />}
+
           {/* Add Task Button */}
-          <button
-            onClick={() => setAddModal(activeTab)}
-            className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-xs font-serif active:bg-gray-50 transition flex items-center justify-center gap-1"
-          >
-            <Plus size={14} /> 添加{tabs.find(t => t.key === activeTab)?.label}
-          </button>
+          {activeTab !== 'stats' && (
+            <button
+              onClick={() => setAddModal(activeTab)}
+              className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-xs font-serif active:bg-gray-50 transition flex items-center justify-center gap-1"
+            >
+              <Plus size={14} /> 添加{tabs.find(t => t.key === activeTab)?.label}
+            </button>
+          )}
         </motion.div>
 
         {/* Quick Stats */}
