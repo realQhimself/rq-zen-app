@@ -95,33 +95,52 @@ img {
 
 /* --- Garden Mini-Game Animations --- */
 
-/* Warm golden glow pulse for lantern proximity */
+/* Warm golden glow pulse for lantern proximity — intense visible glow */
 .garden-item-glow {
   animation: itemGlow 2s ease-in-out infinite;
 }
 @keyframes itemGlow {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(255,200,50,0)); }
-  50% { filter: drop-shadow(0 0 14px rgba(255,200,50,0.7)); }
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(196,168,98,0.8)) drop-shadow(0 0 16px rgba(255,200,50,0.4)); opacity: 0.6; }
+  50% { filter: drop-shadow(0 0 20px rgba(196,168,98,1)) drop-shadow(0 0 32px rgba(255,200,50,0.6)); opacity: 1; }
 }
 
-/* Gentle rotation for bonsai/tree */
+/* Pronounced sway for bonsai/tree — wider rotation + scale pulse */
 .garden-item-sway {
   animation: itemSway 3s ease-in-out infinite;
   transform-origin: bottom center;
 }
 @keyframes itemSway {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(3deg); }
-  75% { transform: rotate(-3deg); }
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(8deg) scale(1.04); }
+  50% { transform: rotate(0deg) scale(1.08); }
+  75% { transform: rotate(-8deg) scale(1.04); }
 }
 
-/* Scale pulse for pond */
+/* Scale pulse + ripple rings for pond */
 .garden-item-ripple {
   animation: itemRipple 2s ease-in-out infinite;
+  position: relative;
+}
+.garden-item-ripple::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 48px;
+  height: 12px;
+  border: 2px solid rgba(196,168,98,0.5);
+  border-radius: 50%;
+  transform: translateX(-50%) scale(0.5);
+  animation: rippleRing 2s ease-out infinite;
+  pointer-events: none;
 }
 @keyframes itemRipple {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+  50% { transform: scale(1.15); }
+}
+@keyframes rippleRing {
+  0% { transform: translateX(-50%) scale(0.5); opacity: 0.8; }
+  100% { transform: translateX(-50%) scale(2); opacity: 0; }
 }
 
 /* Circular progress fill for long-press delete (1 second) */
@@ -142,23 +161,36 @@ img {
   50% { transform: translateY(-3px); }
 }
 
-/* Smoke particles near incense when monk is close */
+/* Smoke particles near incense when monk is close — large visible plume */
+.garden-item-smoke::before,
 .garden-item-smoke::after {
   content: '';
   position: absolute;
-  top: -10px;
   left: 50%;
-  width: 6px;
-  height: 6px;
-  background: radial-gradient(circle, rgba(200,195,185,0.6), transparent);
   border-radius: 50%;
-  filter: blur(1px);
+  pointer-events: none;
+}
+.garden-item-smoke::after {
+  top: -12px;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, rgba(200,195,185,0.8), transparent);
+  filter: blur(2px);
   animation: incenseSmoke 3s ease-out infinite;
+}
+.garden-item-smoke::before {
+  top: -8px;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, rgba(200,195,185,0.6), transparent);
+  filter: blur(3px);
+  animation: incenseSmoke 3s ease-out 1s infinite;
 }
 @keyframes incenseSmoke {
   0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-  20% { opacity: 0.5; }
-  100% { transform: translate(-50%, -40px) scale(2); opacity: 0; }
+  15% { opacity: 0.7; }
+  50% { transform: translate(calc(-50% + 8px), -30px) scale(2); opacity: 0.4; }
+  100% { transform: translate(calc(-50% - 5px), -60px) scale(3); opacity: 0; }
 }
 
 /* --- NPC Animations --- */
