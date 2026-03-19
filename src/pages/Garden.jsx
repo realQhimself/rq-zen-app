@@ -11,6 +11,7 @@ import { KeyboardHint } from '../components/garden/VirtualJoystick';
 import ItemPicker from '../components/garden/ItemPicker';
 import ItemRenderer from '../components/garden/ItemRenderer';
 import useGardenState from '../hooks/useGardenState';
+import useGardenAmbience from '../hooks/useGardenAmbience';
 import { useIsMobile, useKeyboardControls, useMonkMovement } from '../hooks/useMonkMovement';
 
 const BASE = import.meta.env.BASE_URL;
@@ -37,6 +38,9 @@ export default function Garden() {
   // Background music
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(() => safeLoad(KEYS.GARDEN_MUTED, false));
+
+  // Ambient audio layers (birds, crickets, rain — reacts to weather/time)
+  useGardenAmbience(weather, isMuted);
 
   useEffect(() => {
     const audio = new Audio(`${BASE}audio/garden.mp3`);
