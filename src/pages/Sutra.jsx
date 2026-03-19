@@ -318,7 +318,7 @@ function SutraWriter({ sutraId, onBack }) {
     if (pressure >= 0) {
       width = MIN_WIDTH + pressure * (MAX_WIDTH - MIN_WIDTH);
     } else {
-      const speedFactor = 1.2 - Math.min(speed * 0.3, 0.8);
+      const speedFactor = 1.3 - Math.min(speed * 0.5, 1.0);
       width = BASE_WIDTH * speedFactor;
     }
 
@@ -352,10 +352,11 @@ function SutraWriter({ sutraId, onBack }) {
       prevWidth: MIN_WIDTH,
     };
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Draw starting dot
+    ctx.fillStyle = `rgba(44, 44, 44, 1.0)`;
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.arc(x, y, MIN_WIDTH / 2, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   const draw = (e) => {
@@ -369,6 +370,9 @@ function SutraWriter({ sutraId, onBack }) {
     const dx = x - brush.prevX;
     const dy = y - brush.prevY;
     const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 1) return; // Ignore tiny movements
+
     const dt = Math.max(now - brush.prevTime, 1);
     const speed = dist / dt;
 
@@ -376,16 +380,27 @@ function SutraWriter({ sutraId, onBack }) {
 
     const pressure = getPressure(e);
     const targetWidth = calcBrushWidth(speed, pressure, brush.pointCount);
-    const smoothWidth = brush.prevWidth + (targetWidth - brush.prevWidth) * 0.35;
+    const smoothWidth = brush.prevWidth + (targetWidth - brush.prevWidth) * 0.5;
     const alpha = calcInkAlpha(speed);
 
     const ctx = canvasRef.current.getContext('2d');
-    ctx.lineWidth = smoothWidth;
-    ctx.strokeStyle = `rgba(44, 44, 44, ${alpha})`;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+
+    // Circle stamp approach: draw overlapping circles along the path
+    const steps = Math.max(1, Math.floor(dist / 2.5));
+
+    ctx.fillStyle = `rgba(44, 44, 44, ${alpha})`;
+
+    for (let i = 0; i <= steps; i++) {
+      const t = steps > 0 ? i / steps : 0;
+      const px = brush.prevX + (x - brush.prevX) * t;
+      const py = brush.prevY + (y - brush.prevY) * t;
+      // Interpolate width along the segment
+      const pwidth = brush.prevWidth + (smoothWidth - brush.prevWidth) * t;
+
+      ctx.beginPath();
+      ctx.arc(px, py, pwidth / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     brush.prevX = x;
     brush.prevY = y;
@@ -395,8 +410,6 @@ function SutraWriter({ sutraId, onBack }) {
 
   const stopDrawing = () => {
     if (isDrawing) {
-      const ctx = canvasRef.current.getContext('2d');
-      ctx.closePath();
       setIsDrawing(false);
 
       if (feedback !== 'success') {
