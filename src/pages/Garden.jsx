@@ -293,7 +293,7 @@ export default function Garden() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-full flex flex-col relative overflow-hidden select-none touch-manipulation"
+      className="h-full flex flex-col relative overflow-hidden select-none touch-manipulation md:max-w-md md:mx-auto md:rounded-2xl md:shadow-2xl md:my-2"
       onContextMenu={e => e.preventDefault()}
       style={{ WebkitTouchCallout: 'none' }}
     >

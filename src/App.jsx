@@ -87,7 +87,7 @@ const Navigation = () => {
   if (location.pathname === '/sutra') return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/30 pb-safe pt-2 px-6 flex justify-around items-center h-16 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/30 pb-safe pt-2 px-6 flex justify-around items-center h-16 z-50 md:max-w-md md:left-1/2 md:-translate-x-1/2 md:right-auto">
       <NavItem to="/" icon={User} label="修行" />
       <NavItem to="/meditation" icon={Wind} label="禅修" />
       <NavItem to="/fish" icon={Music} label="木鱼" />
@@ -110,14 +110,16 @@ export default function App() {
       </AnimatePresence>
 
       <div className="h-[100dvh] flex flex-col">
-        <div className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/meditation" element={<MeditationPage />} />
-            <Route path="/sutra" element={<SutraPage />} />
-            <Route path="/fish" element={<FishPage />} />
-            <Route path="/garden" element={<GardenPage />} />
-          </Routes>
+        <div className="flex-1 overflow-auto md:flex md:justify-center">
+          <div className="h-full w-full md:max-w-md">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/meditation" element={<MeditationPage />} />
+              <Route path="/sutra" element={<SutraPage />} />
+              <Route path="/fish" element={<FishPage />} />
+              <Route path="/garden" element={<GardenPage />} />
+            </Routes>
+          </div>
         </div>
         <Navigation />
       </div>
