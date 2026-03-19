@@ -32,11 +32,12 @@ export default function useGardenState() {
     if (!itemDef || balance < itemDef.cost) return false;
     spendXP(itemDef.cost);
     setBalance(prev => prev - itemDef.cost);
+    const newId = `item_${Date.now()}`;
     setGarden(prev => ({
       ...prev,
-      items: [...prev.items, { id: `item_${Date.now()}`, type, x, y }],
+      items: [...prev.items, { id: newId, type, x, y }],
     }));
-    return true;
+    return newId;
   };
 
   const removeItem = (itemId) => {

@@ -51,7 +51,7 @@ function getInteractionClass(item, activeInteractions) {
   }
 }
 
-export default function ItemRenderer({ items, activeInteractions, placingItem, onRemove, onNavigate }) {
+export default function ItemRenderer({ items, activeInteractions, placingItem, onRemove, onNavigate, newlyPlacedId }) {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [longPressProgress, setLongPressProgress] = useState(null);
@@ -109,12 +109,16 @@ export default function ItemRenderer({ items, activeInteractions, placingItem, o
         const interactionClass = getInteractionClass(item, activeInteractions);
         const isBeingDeleted = longPressProgress?.itemId === item.id;
         const hasLink = def.link && isNearMonk;
+        const isNewlyPlaced = item.id === newlyPlacedId;
 
         return (
-          <div
+          <motion.div
             key={item.id}
             data-garden-item="true"
             className={`absolute ${interactionClass}`}
+            initial={isNewlyPlaced ? { scale: 0, opacity: 0 } : false}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={isNewlyPlaced ? { type: 'spring', stiffness: 400, damping: 15 } : undefined}
             style={{
               left: `${item.x}%`,
               top: `${item.y}%`,
@@ -187,7 +191,7 @@ export default function ItemRenderer({ items, activeInteractions, placingItem, o
                 />
               </svg>
             )}
-          </div>
+          </motion.div>
         );
       })}
 

@@ -67,10 +67,34 @@ export default function Garden() {
     return () => pool.forEach(a => { a.pause(); a.src = ''; });
   }, []);
 
+  // Placement ding sound (800Hz sine wave, 100ms)
+  const playPlacementDing = useRef(() => {});
+  useEffect(() => {
+    playPlacementDing.current = () => {
+      if (isMuted) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+        // Clean up AudioContext after sound finishes
+        setTimeout(() => ctx.close().catch(() => {}), 200);
+      } catch { /* AudioContext not available */ }
+    };
+  }, [isMuted]);
+
   // Item placement state
   const [showPicker, setShowPicker] = useState(false);
   const [placingItem, setPlacingItem] = useState(null);
   const [ghostPos, setGhostPos] = useState(null);
+  const [newlyPlacedId, setNewlyPlacedId] = useState(null);
 
   // --- Handlers ---
   // Resolve tap position from either mouse or touch event
@@ -90,8 +114,14 @@ export default function Garden() {
     const { x, y } = resolveTapPos(e);
 
     if (placingItem) {
-      const success = placeItem(placingItem, x, y);
-      if (success && navigator.vibrate) navigator.vibrate(30);
+      const newItemId = placeItem(placingItem, x, y);
+      if (newItemId) {
+        if (navigator.vibrate) navigator.vibrate(30);
+        playPlacementDing.current();
+        // Track the newly placed item for spring-in animation
+        setNewlyPlacedId(newItemId);
+        setTimeout(() => setNewlyPlacedId(null), 600);
+      }
       setPlacingItem(null);
       setGhostPos(null);
     } else {
@@ -297,6 +327,7 @@ export default function Garden() {
           placingItem={placingItem}
           onRemove={removeItem}
           onNavigate={handleItemNavigate}
+          newlyPlacedId={newlyPlacedId}
         />
 
         {/* Fixed NPCs */}
