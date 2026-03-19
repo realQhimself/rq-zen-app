@@ -148,9 +148,15 @@ export default function Sutra() {
   };
 
   const triggerAdvance = () => {
+    // Prevent double-advance: clear any pending timer first
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
     setFeedback('success');
     addXP(1);
     advanceTimerRef.current = setTimeout(() => {
+      advanceTimerRef.current = null;
       if (currentIndex < HEART_SUTRA.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setFeedback(null);
@@ -310,7 +316,11 @@ export default function Sutra() {
         </button>
 
         <button
-             onClick={() => setCurrentIndex(prev => Math.min(prev + 1, HEART_SUTRA.length - 1))}
+             onClick={() => {
+               if (advanceTimerRef.current) { clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
+               setFeedback(null);
+               setCurrentIndex(prev => Math.min(prev + 1, HEART_SUTRA.length - 1));
+             }}
              className="flex flex-col items-center text-zen-stone active:text-zen-ink transition"
         >
             <ChevronRight size={22} />
