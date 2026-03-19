@@ -164,6 +164,20 @@ export default function Sutra() {
     }, 1500);
   };
 
+  // Brush state for calligraphy pressure/speed effects
+  const brushRef = useRef({
+    prevX: 0,
+    prevY: 0,
+    prevTime: 0,
+    pointCount: 0,
+    prevWidth: 12,
+  });
+
+  const BASE_WIDTH = 12;
+  const MIN_WIDTH = 4;
+  const MAX_WIDTH = 16;
+  const TAPER_POINTS = 5; // points over which stroke tapers in at start
+
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -174,23 +188,104 @@ export default function Sutra() {
     };
   };
 
+  const getPressure = (e) => {
+    // Try native pressure from Pointer Events or iOS touch force
+    if (e.pressure !== undefined && e.pressure > 0 && e.pressure < 1) return e.pressure;
+    if (e.touches && e.touches[0] && e.touches[0].force > 0) return e.touches[0].force;
+    return -1; // no hardware pressure available
+  };
+
+  const calcBrushWidth = (speed, pressure, pointCount) => {
+    let width;
+
+    if (pressure >= 0) {
+      // Hardware pressure: map 0..1 → MIN_WIDTH..MAX_WIDTH
+      width = MIN_WIDTH + pressure * (MAX_WIDTH - MIN_WIDTH);
+    } else {
+      // Speed-based fallback: slow → thick, fast → thin
+      // speed is in px/ms; typical range ~0.1 (slow) to ~2.0 (fast)
+      const speedFactor = 1.2 - Math.min(speed * 0.3, 0.8);
+      width = BASE_WIDTH * speedFactor;
+    }
+
+    // Clamp
+    width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width));
+
+    // Stroke taper: gradually increase width at the very start of a stroke
+    if (pointCount < TAPER_POINTS) {
+      const t = pointCount / TAPER_POINTS; // 0 → 1
+      width = MIN_WIDTH + t * (width - MIN_WIDTH);
+    }
+
+    return width;
+  };
+
+  const calcInkAlpha = (speed) => {
+    // Slow strokes → rich ink (1.0), fast strokes → lighter (0.7)
+    const alpha = 1.0 - Math.min(speed * 0.15, 0.25);
+    return Math.max(0.75, Math.min(1.0, alpha));
+  };
+
   const startDrawing = (e) => {
+    // Prevent double-handling from both pointer and touch
+    if (e.type.startsWith('touch') && e.cancelable) e.preventDefault();
     setIsDrawing(true);
-    setFeedback(null); 
+    setFeedback(null);
     const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext('2d');
+
+    // Reset brush state for new stroke
+    brushRef.current = {
+      prevX: x,
+      prevY: y,
+      prevTime: Date.now(),
+      pointCount: 0,
+      prevWidth: MIN_WIDTH, // start thin for taper-in
+    };
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineWidth = 12; 
-    ctx.strokeStyle = '#2c2c2c';
   };
 
   const draw = (e) => {
     if (!isDrawing) return;
+    if (e.type.startsWith('touch') && e.cancelable) e.preventDefault();
+
     const { x, y } = getPos(e);
+    const now = Date.now();
+    const brush = brushRef.current;
+
+    // Calculate speed (px per ms)
+    const dx = x - brush.prevX;
+    const dy = y - brush.prevY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dt = Math.max(now - brush.prevTime, 1); // avoid div-by-zero
+    const speed = dist / dt;
+
+    brush.pointCount++;
+
+    const pressure = getPressure(e);
+    const targetWidth = calcBrushWidth(speed, pressure, brush.pointCount);
+    // Smooth width transition to avoid jarring jumps
+    const smoothWidth = brush.prevWidth + (targetWidth - brush.prevWidth) * 0.35;
+    const alpha = calcInkAlpha(speed);
+
     const ctx = canvasRef.current.getContext('2d');
+    ctx.lineWidth = smoothWidth;
+    ctx.strokeStyle = `rgba(44, 44, 44, ${alpha})`;
     ctx.lineTo(x, y);
     ctx.stroke();
+    // Continue path from current point so next segment connects
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    // Update brush state
+    brush.prevX = x;
+    brush.prevY = y;
+    brush.prevTime = now;
+    brush.prevWidth = smoothWidth;
   };
 
   const stopDrawing = () => {
@@ -262,13 +357,15 @@ export default function Sutra() {
 
       {/* Main Canvas Area - Padded to prevent edge cutting */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden p-4">
-         <canvas 
+         <canvas
             ref={canvasRef}
             className="touch-none"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
+            style={{ touchAction: 'none' }}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerLeave={stopDrawing}
+            onPointerCancel={stopDrawing}
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
