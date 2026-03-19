@@ -19,6 +19,13 @@ body {
   @apply bg-zen-bg text-zen-ink font-serif overflow-hidden select-none;
 }
 
+/* Prevent "Save Image" context menu on long-press for all images */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* --- Frosted Glass Card --- */
 .zen-card {
   background: rgba(255, 255, 255, 0.72);

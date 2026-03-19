@@ -22,6 +22,7 @@ export default function Garden() {
   const weather = useWeather();
   const [floatingPoints, setFloatingPoints] = useState([]);
   const gardenRef = useRef(null);
+  const touchStartRef = useRef(null); // track touch start time for tap detection
 
   // Monk movement
   const joystickRef = useRef({ dx: 0, dy: 0 });
@@ -72,15 +73,21 @@ export default function Garden() {
   const [ghostPos, setGhostPos] = useState(null);
 
   // --- Handlers ---
+  // Resolve tap position from either mouse or touch event
+  const resolveTapPos = (e) => {
+    const rect = gardenRef.current.getBoundingClientRect();
+    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    return {
+      x: Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(5, Math.min(90, ((clientY - rect.top) / rect.height) * 100)),
+    };
+  };
+
   const handleGardenTap = (e) => {
     if (showPicker) return;
     if (e.target.closest('[data-garden-item]')) return;
-
-    const rect = gardenRef.current.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const x = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(5, Math.min(90, ((clientY - rect.top) / rect.height) * 100));
+    const { x, y } = resolveTapPos(e);
 
     if (placingItem) {
       const success = placeItem(placingItem, x, y);
@@ -88,9 +95,22 @@ export default function Garden() {
       setPlacingItem(null);
       setGhostPos(null);
     } else {
-      // Tap-to-move: monk walks to tapped position
       setTarget(x, y);
     }
+  };
+
+  // Touch handlers: only trigger move on quick tap (<300ms), prevents "save image" prompt
+  const handleTouchStart = (e) => {
+    touchStartRef.current = Date.now();
+  };
+
+  const handleTouchEnd = (e) => {
+    const elapsed = Date.now() - (touchStartRef.current || 0);
+    if (elapsed < 300) {
+      // Quick tap — treat as move/place
+      handleGardenTap(e);
+    }
+    touchStartRef.current = null;
   };
 
   const handleGardenTouchMove = (e) => {
@@ -147,6 +167,8 @@ export default function Garden() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="h-full flex flex-col relative overflow-hidden select-none touch-manipulation"
+      onContextMenu={e => e.preventDefault()}
+      style={{ WebkitTouchCallout: 'none' }}
     >
       {/* HUD */}
       <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 z-20 garden-hud">
@@ -205,7 +227,9 @@ export default function Garden() {
       {/* Garden Surface */}
       <div
         ref={gardenRef}
-        onClick={handleGardenTap}
+        onClick={(e) => { if (!('ontouchstart' in window)) handleGardenTap(e); }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         onTouchMove={handleGardenTouchMove}
         className="flex-1 relative"
         style={{
