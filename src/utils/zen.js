@@ -43,6 +43,9 @@ export const KEYS = {
   MEDITATION_TIMER: 'zen_meditation_timer',
   GARDEN_MUTED: 'zen_garden_muted',
   MONK_POS: 'zen_monk_pos',
+  SUTRA_SESSIONS: 'zen_sutra_sessions',
+  SUTRA_STREAK: 'zen_sutra_streak',
+  SUTRA_ACHIEVEMENTS: 'zen_sutra_achievements',
 };
 
 // --- 13 Buddhist Ranks ---
