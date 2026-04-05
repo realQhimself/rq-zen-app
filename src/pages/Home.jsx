@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Wind, Music, PenTool, Leaf, Plus, Minus, Check, Trash2, X, Clock, BookOpen, Flame, Calendar, Star, Trophy } from 'lucide-react';
 import { RANKS, getRank, getNextRank, safeLoad, safeSave, KEYS } from '../utils/zen';
+import SutraProgress from '../components/sutra/SutraProgress';
+import { getTotalChars } from '../utils/sutraProgress';
 
 // --- Default Profile ---
 const DEFAULT_HABITS = [
@@ -141,7 +143,7 @@ const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transi
 // --- Stats Panel ---
 const StatsPanel = () => {
   const meditation = safeLoad(KEYS.MEDITATION, { sessions: 0, totalSeconds: 0 });
-  const sutraIndex = safeLoad(KEYS.SUTRA_INDEX, 0);
+  const sutraTotalChars = getTotalChars();
   const profile = safeLoad(KEYS.PROFILE, { totalXP: 0, spentXP: 0 });
   const garden = safeLoad(KEYS.GARDEN, { checkIns: [] });
   const rank = getRank(profile.totalXP);
@@ -165,8 +167,8 @@ const StatsPanel = () => {
     },
     {
       icon: BookOpen,
-      value: `${sutraIndex} / 72`,
-      label: '抄经进度',
+      value: `${sutraTotalChars.toLocaleString()} 字`,
+      label: '累计抄写',
       color: 'text-zen-ink',
     },
     {
@@ -529,6 +531,11 @@ export default function Home() {
             <p className="text-lg font-mono font-bold text-zen-ink">{balance}</p>
             <p className="text-[10px] text-zen-stone">功德</p>
           </div>
+        </motion.div>
+
+        {/* Sutra Practice Progress */}
+        <motion.div variants={fadeUp} className="mb-5">
+          <SutraProgress />
         </motion.div>
 
         {/* Quick Actions */}
