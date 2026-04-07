@@ -140,6 +140,7 @@ export default function SutraCompletion({ sutraId, dedication, stats, onDone }) 
   }, [sutraId, onDone]);
 
   const minutes = Math.floor(stats.duration / 60);
+  const xpEarned = stats.written ?? stats.chars;
 
   return (
     <div className="h-full flex flex-col items-center justify-center px-6"
@@ -189,7 +190,7 @@ export default function SutraCompletion({ sutraId, dedication, stats, onDone }) 
 
         {/* Stats */}
         <p className="text-xs text-white/30 mb-6">
-          用时 {minutes} 分钟 · +{stats.chars} XP
+          用时 {minutes > 0 ? `${minutes} 分钟` : '< 1 分钟'} · +{xpEarned} XP
         </p>
 
         {/* Actions */}

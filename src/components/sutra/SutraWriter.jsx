@@ -18,6 +18,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
   const startTimeRef = useRef(Date.now());
   const strokeCountRef = useRef(0);
   const advanceTimerRef = useRef(null);
+  const writtenCountRef = useRef(0);
 
   const { startStroke, continueStroke, endStroke } = useBrushEngine();
   const { buildReference, shouldAdvance } = useCharRecognition();
@@ -34,7 +35,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
   useEffect(() => {
     if (currentIndex >= sutraText.length) {
       const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
-      onComplete({ duration, chars: sutraText.length });
+      onComplete({ duration, chars: sutraText.length, written: writtenCountRef.current });
     }
   }, [currentIndex, sutraText.length, onComplete]);
 
@@ -113,6 +114,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
 
   const advanceToNext = useCallback(async () => {
     addXP(1);
+    writtenCountRef.current++;
     await captureStroke();
     setCurrentIndex((prev) => prev + 1);
   }, [captureStroke]);
