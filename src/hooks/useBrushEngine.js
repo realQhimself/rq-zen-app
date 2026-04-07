@@ -44,11 +44,11 @@ function getSvgPathFromStroke(stroke) {
 export default function useBrushEngine() {
   // inputPoints: [x, y, pressure] for perfect-freehand
   // rawPoints: [x, y] for character recognition
-  // snapshotUrl: data URL of canvas state before current stroke began
+  // snapshotData: ImageData of canvas state before current stroke began
   const brushRef = useRef({
     inputPoints: [],
     rawPoints: [],
-    snapshotUrl: null,
+    snapshotData: null,
   });
 
   const audioRef = useRef(null);
@@ -96,11 +96,10 @@ export default function useBrushEngine() {
     const dpr = window.devicePixelRatio || 1;
 
     // Restore snapshot (canvas state before this stroke started)
-    if (brush.snapshotImage) {
+    if (brush.snapshotData) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(brush.snapshotImage, 0, 0);
+      ctx.putImageData(brush.snapshotData, 0, 0);
       ctx.restore();
     }
 
@@ -154,26 +153,16 @@ export default function useBrushEngine() {
   }, [getInkAlpha]);
 
   /**
-   * Take a snapshot of the current canvas state (before a new stroke).
-   * Uses createImageBitmap for performance when available, falls back to Image.
+   * Take a synchronous snapshot of the current canvas state (before a new stroke).
+   * Uses getImageData for reliable synchronous capture on all browsers.
    */
   const takeSnapshot = useCallback((canvas) => {
-    const brush = brushRef.current;
-    // Use ImageBitmap for zero-copy snapshot (fast on mobile)
-    if (typeof createImageBitmap === 'function') {
-      createImageBitmap(canvas).then((bmp) => {
-        brush.snapshotImage = bmp;
-      }).catch(() => {
-        // Fallback: use data URL + Image
-        const img = new Image();
-        img.src = canvas.toDataURL();
-        brush.snapshotImage = img;
-      });
-    } else {
-      const img = new Image();
-      img.src = canvas.toDataURL();
-      brush.snapshotImage = img;
-    }
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    return imageData;
   }, []);
 
   // --- Public API ---
@@ -184,13 +173,13 @@ export default function useBrushEngine() {
     const pressure = getPressure(e);
     const hasRealPressure = e.pressure !== undefined && e.pressure > 0 && e.pressure < 1;
 
-    // Snapshot the canvas so we can redraw cleanly on each pointermove
-    takeSnapshot(canvas);
+    // Synchronous snapshot so we can redraw cleanly on each pointermove
+    const snapshotData = takeSnapshot(canvas);
 
     brushRef.current = {
       inputPoints: [[x, y, pressure]],
       rawPoints: [[x, y]],
-      snapshotImage: brushRef.current.snapshotImage || null,
+      snapshotData,
       hasRealPressure,
     };
 
@@ -227,8 +216,8 @@ export default function useBrushEngine() {
     stopBrushSound();
     // Return raw [x,y] points for character recognition
     const points = brushRef.current.rawPoints || [];
-    // Clean up snapshot reference
-    brushRef.current.snapshotImage = null;
+    // Release snapshot memory
+    brushRef.current.snapshotData = null;
     return points;
   }, []);
 
