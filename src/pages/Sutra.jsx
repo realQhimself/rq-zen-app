@@ -3,7 +3,7 @@ import SutraSelection from '../components/sutra/SutraSelection';
 import SutraDedication from '../components/sutra/SutraDedication';
 import SutraWriter from '../components/sutra/SutraWriter';
 import SutraCompletion from '../components/sutra/SutraCompletion';
-import { saveSutraProgress } from '../utils/sutraProgress';
+import { saveSutraProgress, loadSutraProgress } from '../utils/sutraProgress';
 import { clearStrokes } from '../utils/sutraDb';
 import { getSutraById } from '../data/sutras/index';
 
@@ -20,19 +20,21 @@ export default function Sutra() {
       // Resume writing — skip dedication
       setStage('write');
     } else {
-      if (completed) {
-        // Reset progress for re-copy, clear old strokes
-        saveSutraProgress(id, 0);
-        clearStrokes(id).catch(() => {});
-      }
       setStage('dedicate');
     }
   }, []);
 
   const handleStartWriting = useCallback((dedicationText) => {
+    // Reset progress for re-copy only when user commits to start
+    const sutra = getSutraById(sutraId);
+    const currentIdx = loadSutraProgress()[sutraId] || 0;
+    if (currentIdx >= sutra.text.length) {
+      saveSutraProgress(sutraId, 0);
+      clearStrokes(sutraId).catch(() => {});
+    }
     setDedication(dedicationText);
     setStage('write');
-  }, []);
+  }, [sutraId]);
 
   const handleWritingComplete = useCallback(({ duration, chars }) => {
     setCompletionStats({ duration, chars });
