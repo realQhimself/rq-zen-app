@@ -11,15 +11,24 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Zen Space</title>
     <script>
-      // Clean up stale service workers from old paths (/zen-app/, /rQ-zen-app/)
+      // One-time nuke: unregister ALL service workers, clear caches, reload
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) {
-            if (r.scope && r.scope.indexOf('/rq-zen-app/') === -1) {
-              r.unregister();
+        var swNuked = sessionStorage.getItem('sw_nuked');
+        if (!swNuked) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            var had = regs.length > 0;
+            var tasks = regs.map(function(r) { return r.unregister(); });
+            if ('caches' in window) {
+              tasks.push(caches.keys().then(function(names) {
+                return Promise.all(names.map(function(n) { return caches.delete(n); }));
+              }));
             }
+            Promise.all(tasks).then(function() {
+              sessionStorage.setItem('sw_nuked', '1');
+              if (had) location.reload();
+            });
           });
-        });
+        }
       }
       // Single Page App redirect handler for GitHub Pages
       (function(l) {
