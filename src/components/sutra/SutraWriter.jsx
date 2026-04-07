@@ -19,6 +19,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
   const strokeCountRef = useRef(0);
   const advanceTimerRef = useRef(null);
   const writtenCountRef = useRef(0);
+  const allStrokePointsRef = useRef([]);
 
   const { startStroke, continueStroke, endStroke } = useBrushEngine();
   const { buildReference, shouldAdvance } = useCharRecognition();
@@ -68,6 +69,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
     drawGuide(ctx, width, height);
     buildReference(currentChar, width, height);
     strokeCountRef.current = 0;
+    allStrokePointsRef.current = [];
     if (advanceTimerRef.current) {
       clearTimeout(advanceTimerRef.current);
       advanceTimerRef.current = null;
@@ -139,14 +141,20 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
   const handlePointerUp = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
-    endStroke();
+    const points = endStroke(); // returns points array (new brush engine) or undefined (old)
     strokeCountRef.current++;
+
+    // Push stroke points immediately so rapid strokes aren't lost
+    if (points && points.length > 0) {
+      allStrokePointsRef.current.push(points);
+    }
 
     // Delay check — wait 0.5s after last stroke before deciding
     if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     advanceTimerRef.current = setTimeout(() => {
-      if (shouldAdvance(canvasRef.current, strokeCountRef.current)) {
+      if (shouldAdvance(canvasRef.current, strokeCountRef.current, allStrokePointsRef.current)) {
         advanceToNext();
+        allStrokePointsRef.current = [];
       }
     }, 500);
   };
@@ -189,6 +197,7 @@ export default function SutraWriter({ sutraId, onComplete, onExit }) {
       drawGuide(ctx, width, height);
       buildReference(currentChar, width, height);
       strokeCountRef.current = 0;
+      allStrokePointsRef.current = [];
     }
   };
 
